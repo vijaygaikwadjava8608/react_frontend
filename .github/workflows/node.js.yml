@@ -5,13 +5,12 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ "master" ]
-  
+    branches: ["master"]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    permissions: write-all
 
     strategy:
       matrix:
@@ -19,12 +18,29 @@ jobs:
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm test
+      - name: Login to docker hub
+        run: docker login -u ${{secrets.DOCKER_USERNAME}} -p ${{secrets.DOCKER_PASSWORD}}
+      - name: Build docker image
+        run: docker build -t vijaygaikwaddochub/react_front .
+      - name: Publish image to docker hub
+        run: docker push vijaygaikwaddochub/react_front:latest
+
+  deploy:
+    needs: build
+    runs-on: [aws-ec2]
+    steps:
+      - name: Pull the image from docker hub
+        run: docker pull vijaygaikwaddochub/react_front:latest
+      - name: delete old container
+        run: docker rm -f reactfrontend-container
+      - name: Run docker container
+        run: docker run -d -p 3000:8080 --name reactfrontend-container vijaygaikwaddochub/react_front
