@@ -7,7 +7,7 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copy the package.json file.
-COPY package.json yarn.lock ./
+COPY package.json ./
 
 # Install application dependencies.
 RUN yarn install --production
